@@ -1,4 +1,4 @@
-# greenstox
+# Greenstox Automation Project
 An automated investment platform empowering smart equities loaded with TechnoFunda potential for investor
 
 Launched the telegram channel on 23rd December 2023 with the first version of Cybizestor : 
