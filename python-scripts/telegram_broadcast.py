@@ -50,13 +50,13 @@ def saved_recommendation(post_id,nsecode,saved_recommendation_list):
         nsecode_row = row[0].upper()
         price = row[4]  
         current_date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
-        saved_recommendation_list.append([str(post_id), nsecode_row, str(price), current_date_time])
+        saved_recommendation_list.append([str(post_id), nsecode_row, str(price), current_date_time, "empty"])
     return saved_recommendation_list
 
 async def main():
     await client.connect()
     cached_stocks=list(set(read_cached(cached_file)))
-    saved_recommendation_list = [["post_id", "nsecode", "price", "date"]]
+    saved_recommendation_list = [["post_id", "nsecode", "price", "date","message_id"]]
     saved_recommendation_file = read_cached(recommendation_file)
     try:
         if(len(saved_recommendation_file) == 0):
@@ -81,7 +81,7 @@ async def main():
     cached(cached_file)
 
     if(len(saved_recommendation_list) != 1):
-        columns=["post_id,nsecode,price,date"]
+        columns=["post_id,nsecode,price,date,message_id"]
         saved_recommendation_list =[",".join(str(item) for item in sublist) for sublist in saved_recommendation_list]
         saved_recommendation_df=pd.DataFrame(saved_recommendation_file+saved_recommendation_list[1:], columns=columns)
         

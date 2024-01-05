@@ -85,7 +85,16 @@ async function getCsvContent( symbol ) {
                                 `💹 Current Price: ₹${cells[4]}\n\n` +
                                 `⭐ Finstar Rating: ${cells[5]}\n\n` +
                                 `️🎖️ Valuation Rating: ${cells[6]}`;
-        return message;
+        let nsecode = cells[0]
+        let price = cells[4]
+        let currentDate = new Date();
+        let isoDateString = currentDate.toISOString();
+        const jsonBody = {
+            "nsecode": nsecode,
+            "price": price,
+            "date" : isoDateString,
+        };
+        return [message, jsonBody];
       }	    
     }	
   } catch (error) {
@@ -99,14 +108,24 @@ async function sendChartPhoto(apiToken, chat, photo, cmdKey, query = {}) {
 
   if (symbol && interval) {
     // send photo without reply markup inline keyboad
-	const csvContent = await getCsvContent(symbol); 
-	if (csvContent == undefined){
-	   console.log("empty")
-	   return 0
-	}
-    return sendPhoto(apiToken, chat, photo, {
-      caption: `${csvContent}`,
+	  const [csvContent, jsonBody] = await getCsvContent(symbol);  
+    const response = await sendPhoto(apiToken, chat, photo, {
+      caption: `${csvContent}`
     })
+    let response_data = await response.json()
+    let messageId = response_data.result.message_id
+    const apiRecommendUrl = 'http://127.0.0.1:5000/update/recommendation';
+    jsonBody["message_id"] = messageId
+    const apiRecommendresponse = await fetch(apiRecommendUrl, {
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(jsonBody)
+    });
+    const apiRecommendresponseData = await apiRecommendresponse.json();
+
+    return response
   } else {
     const cmdKeyDefault = config[cmdKey].default
     const opt = {
