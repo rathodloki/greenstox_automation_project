@@ -21,7 +21,7 @@ with open('secret.json', 'r') as file:
 # Set up bot and group IDs
 TOKEN = secrets['token']
 group_id = secrets['group_id']
-OWNER_ID = secrets['owner_id']
+OWNER_ID = secrets['OWNER_ID']
 DATA_FILE = 'schedule.json' # Path to JSON that stores all data about memberships
 CODES_FILE = 'codes.txt' # Path to TXT that stores all codes to be redeemed
 

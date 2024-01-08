@@ -1,4 +1,5 @@
 from telethon import TelegramClient
+from telethon.tl.functions.messages import SendMediaRequest
 import subprocess, json, datetime, csv
 import pandas as pd
 
@@ -8,7 +9,7 @@ with open('secret.json', 'r') as file:
 
 api_id = secrets['api_id']
 api_hash = secrets['api_hash']
-phone_number = secrets['phone_number']  # Replace with your phone number
+chat_id = secrets['chat_id']
 bot_name = '@chartbot_telegrambot'
 broadcast_csv = '/var/www/html/broadcast.csv'
 cached_file = "stock.cache"
@@ -53,6 +54,21 @@ def saved_recommendation(post_id,nsecode,saved_recommendation_list):
         saved_recommendation_list.append([str(post_id), nsecode_row, str(price), current_date_time, "empty"])
     return saved_recommendation_list
 
+async def scanner(broadcast_pd, nsecode):
+    csv_filename = "csv/recommendation.csv"
+    recommend_pd = pd.read_csv(csv_filename) 
+    filtered_recommend_pd = recommend_pd[recommend_pd['nsecode'] == nsecode].sort_values(by='date', ascending=False).head(1)
+    filtered_broadcast_pd = broadcast_pd[broadcast_pd['nsecode'] == nsecode]
+    if(not(filtered_recommend_pd.empty and filtered_broadcast_pd.empty)):
+        return "both are empty"
+    filtered_broadcast_pd = filtered_broadcast_pd[['nsecode', 'Current Price']]
+    recommend_row = filtered_recommend_pd.values.tolist()[0]
+    broadcast_row = filtered_broadcast_pd.values.tolist()[0]
+    if(broadcast_row[1] > recommend_row[2]* (1+10/100)):
+        print(recommend_row)
+        message = f"🚀 Our recommended stock ({recommend_row[1]}) are is 10% increase!"
+        await client.send_message(chat_id, message , reply_to=recommend_row[4])
+
 async def main():
     await client.connect()
     cached_stocks=list(set(read_cached(cached_file)))
@@ -67,19 +83,19 @@ async def main():
             post_id = int(saved_recommendation_file[-1].split(",")[0]) + 1
     except Exception as e:
         print("Error in saved_recommendation_list", e)
-
+    skiplist = []
     for nsecode in nsecodelist:
-        nsecode= nsecode.replace("-", "_")
+        nsecode = nsecode.replace("-", "_")
+        await scanner(broadcast_pd, nsecode)
         if nsecode in cached_stocks:
-            print(f"skipping: {nsecode}")
-            await client.send_message(bot_name, f"skipping: {nsecode}")
+            skiplist.append(nsecode)
             continue
         saved_recommendation_list = saved_recommendation(post_id,nsecode,saved_recommendation_list)
         post_id+=1
         print(f"running: {nsecode}")
         await client.send_message(bot_name, '/chart NSE:'+nsecode+' 1W')
     cached(cached_file)
-
+    await client.send_message(bot_name, f"Skipped: {skiplist}")
     if(len(saved_recommendation_list) != 1):
         columns=["post_id,nsecode,price,date,message_id"]
         saved_recommendation_list =[",".join(str(item) for item in sublist) for sublist in saved_recommendation_list]
