@@ -1,8 +1,8 @@
 from telethon import TelegramClient
 from telethon.tl.functions.messages import SendMediaRequest
-import subprocess, json, datetime, csv
+import subprocess, json, datetime, csv, requests
 import pandas as pd
-
+print(f"---------------Started at: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}---------------")
 secrets = {}
 with open('secret.json', 'r') as file:
     secrets = json.load(file)
@@ -23,7 +23,6 @@ nsecodelist = broadcast_pd["nsecode"].tolist()
 client = TelegramClient('session_name', api_id, api_hash)
 
 nsecodelist = [item.upper() for item in nsecodelist]
-
 def cached(cached_file):
     cached_nsecode = read_cached(cached_file)
     cached_nsecode = list(set(cached_nsecode))
@@ -59,15 +58,30 @@ async def scanner(broadcast_pd, nsecode):
     recommend_pd = pd.read_csv(csv_filename) 
     filtered_recommend_pd = recommend_pd[recommend_pd['nsecode'] == nsecode].sort_values(by='date', ascending=False).head(1)
     filtered_broadcast_pd = broadcast_pd[broadcast_pd['nsecode'] == nsecode]
-    if(not(filtered_recommend_pd.empty and filtered_broadcast_pd.empty)):
+    if(filtered_recommend_pd.empty and filtered_broadcast_pd.empty):
         return "both are empty"
     filtered_broadcast_pd = filtered_broadcast_pd[['nsecode', 'Current Price']]
     recommend_row = filtered_recommend_pd.values.tolist()[0]
     broadcast_row = filtered_broadcast_pd.values.tolist()[0]
     if(broadcast_row[1] > recommend_row[2]* (1+10/100)):
         print(recommend_row)
-        message = f"🚀 Our recommended stock ({recommend_row[1]}) are is 10% increase!"
-        await client.send_message(chat_id, message , reply_to=recommend_row[4])
+        message = f"🚀 Our recommended stock ({recommend_row[1]}) is on 10% increase, from {recommend_row[2]} to {int(broadcast_row[1])}!💹 "
+        print(message)
+        sent_message = await client.send_message(chat_id, message , reply_to=int(recommend_row[4]))
+        message_id = sent_message.id
+        await client.pin_message(chat_id, message_id=message_id, notify=True)
+        username ='admin'
+        password = secrets['admin']
+        auth = requests.auth.HTTPBasicAuth(username, password)
+        url = "http://127.0.0.1:5000/update/price_recommendation"
+        data = {
+                    "nsecode": recommend_row[1],
+                    "price": broadcast_row[1],
+                    "message_id": message_id
+                }
+        response = requests.post(url, json=data, auth=auth)
+        if response.status_code == 200:
+            print(response.text)
 
 async def main():
     await client.connect()
@@ -86,7 +100,6 @@ async def main():
     skiplist = []
     for nsecode in nsecodelist:
         nsecode = nsecode.replace("-", "_")
-        await scanner(broadcast_pd, nsecode)
         if nsecode in cached_stocks:
             skiplist.append(nsecode)
             continue
@@ -106,6 +119,9 @@ async def main():
         else: 
             saved_recommendation_df.to_csv('./csv/recommendation.csv',header=None, index=False, quoting=csv.QUOTE_NONE,sep=';')
     # Optionally keep the client running for further events
+    for nsecode in nsecodelist:
+        nsecode = nsecode.replace("-", "_")  
+        await scanner(broadcast_pd, nsecode)      
     await client.start()
     await client.disconnect()
     #await client.run_until_disconnected()
@@ -113,3 +129,4 @@ async def main():
 if __name__ == '__main__':
     with client:
         client.loop.run_until_complete(main())
+print(f"---------------Ended at: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}---------------")
