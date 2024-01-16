@@ -69,7 +69,8 @@ async def scanner(broadcast_pd, nsecode):
         print(message)
         sent_message = await client.send_message(chat_id, message , reply_to=int(recommend_row[4]))
         message_id = sent_message.id
-        await client.pin_message(chat_id, message_id=message_id, notify=True)
+        print("message_id:",message_id)
+        await client.pin_message(chat_id, message=message_id, notify=False)
         username ='admin'
         password = secrets['admin']
         auth = requests.auth.HTTPBasicAuth(username, password)
