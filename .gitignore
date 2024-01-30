@@ -1,0 +1,52 @@
+# Ignore build artifacts
+build/
+dist/  # Already included
+
+# Ignore virtualenv
+virtualenv
+
+# Ignore documentation files
+docs/
+
+# Ignore dependencies
+node_modules/  # Already included
+wrangler.toml
+
+# Ignore secrets
+secrets.yaml
+secrets.json
+secret.json
+
+# Ignore cache files
+stock.cache
+
+# Ignore CSV files
+*.csv
+
+# Ignore backup files and directories
+backup/
+
+# Ignore session files
+session_name.session
+
+# Ignore temporary files and directories
+tmp/
+log/
+
+# Ignore large files
+*.zip
+*.tar.gz
+
+# Ignore Snap package files
+snap/
+
+# Additional patterns
+dist/  # Added
+worker/  # Added
+node_modules/  # Already included
+package-lock.json  # Added
+
+
+# image
+table_image.png
+table10stocks.png
