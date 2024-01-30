@@ -1,9 +1,8 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_httpauth import HTTPBasicAuth
-import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater
-import csv, json
+import csv, json, telegram
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -43,6 +42,15 @@ def json_file_reader(filename):
     except Exception as e:
         print(f"File problem in {filename}", e)
 
+def csv_file_reader(users_file):
+    try:
+        with open(users_file, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            data = list(reader)
+            return data
+    except Exception as e:
+        return jsonify({'error': 'get csv failed'}), 400
+
 def write_data(data, users_file):
     with open(users_file, 'w') as f:
         json.dump(data, f)
@@ -72,6 +80,7 @@ def append_messageid(json_data):
                 if row_date == date:
                     is_nsecode_present = True
                     row[4] = message_id
+                    row[5] = returns
                     break
         if not(is_nsecode_present):
             return jsonify({"status":"Data not found"}), 404
@@ -88,11 +97,12 @@ def append_list(json_data):
         price = json_data['price']
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
         message_id = json_data['message_id']
+        returns = json_data['returns']
         recommendation_data = read_recommendation_file(filename)
         if(len(recommendation_data) == 0):
             return jsonify({"status":"Data not found"}), 404
         post_id = int(recommendation_data[len(recommendation_data)-1][0]) + 1
-        recommendation_data.append([post_id,nsecode,price,date,message_id ])
+        recommendation_data.append([post_id,nsecode,price,date,message_id,returns ])
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(recommendation_data)
@@ -105,7 +115,7 @@ def append_list(json_data):
 def update_recommendation():
     try:
         json_data = request.get_json()
-        if not json_data or not set(json_data.keys()) == {'nsecode', 'price', 'date', 'message_id'}:
+        if not json_data or not set(json_data.keys()) == {'nsecode', 'price', 'date', 'message_id','returns'}:
             return jsonify({'error': 'Invalid JSON format'}), 400
         status = append_messageid(json_data)
         return status
@@ -117,7 +127,7 @@ def update_recommendation():
 def update_price_recommendation():
     try:
         json_data = request.get_json()
-        if not json_data or not set(json_data.keys()) == {'nsecode', 'price', 'message_id'}:
+        if not json_data or not set(json_data.keys()) == {'nsecode', 'price', 'message_id','returns'}:
             return jsonify({'error': 'Invalid JSON format'}), 400
         status = append_list(json_data)
         return status
@@ -162,6 +172,40 @@ def update_channel_access_hold(user_id):
         except:
             return jsonify({'error': 'Invalid user details'}), 400
 
+@app.route("/get/recommendations", methods=['GET'])
+@auth.login_required
+def get_recommendations():
+        try:
+            users_file = "/home/ubuntu/python-scripts/csv/recommendation.csv"
+            user_data = csv_file_reader(users_file)
+            css_styles = """
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            font-family: Arial, sans-serif;
+                            background-color: #1f1f1f;
+                            color: #fff;
+                        }
+                        th, td {
+                            border: 1px solid #333;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #262626;
+                        }
+                        """
+            table_html = f"<style>{css_styles}</style><table>\n<thead>\n<tr>"
+            table_html += "".join([f"<th>{header}</th>" for header in user_data[0]])  # Add headers
+            table_html += "</tr>\n</thead>\n<tbody>\n"
+            for row in user_data[1:]:  # Skip the header row
+                table_html += "<tr>"
+                table_html += "".join([f"<td>{cell}</td>" for cell in row])
+                table_html += "</tr>\n"
+            table_html += "</tbody>\n</table>"
+            return Response(table_html, mimetype='text/html')
+        except Exception as e:
+            return jsonify({'error': 'get csv failed',"error":str(e)}), 400
 @app.errorhandler(401)
 def unauthorized(error):
     return jsonify({'error': 'unauthorized access'}), 401

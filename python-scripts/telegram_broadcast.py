@@ -50,45 +50,77 @@ def saved_recommendation(post_id,nsecode,saved_recommendation_list):
         nsecode_row = row[0].upper()
         price = row[4]  
         current_date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
-        saved_recommendation_list.append([str(post_id), nsecode_row, str(price), current_date_time, "empty"])
+        saved_recommendation_list.append([str(post_id), nsecode_row, str(price), current_date_time, "empty", "no"])
     return saved_recommendation_list
 
 async def scanner(broadcast_pd, nsecode):
     csv_filename = "csv/recommendation.csv"
     recommend_pd = pd.read_csv(csv_filename) 
-    filtered_recommend_pd = recommend_pd[recommend_pd['nsecode'] == nsecode].sort_values(by='date', ascending=False).head(1)
+    filtered_recommend_pd = recommend_pd[recommend_pd['nsecode'] == nsecode].sort_values(by='date').head(1)
     filtered_broadcast_pd = broadcast_pd[broadcast_pd['nsecode'] == nsecode]
     if(filtered_recommend_pd.empty and filtered_broadcast_pd.empty):
         return "both are empty"
     filtered_broadcast_pd = filtered_broadcast_pd[['nsecode', 'Current Price']]
     recommend_row = filtered_recommend_pd.values.tolist()[0]
     broadcast_row = filtered_broadcast_pd.values.tolist()[0]
-    if(broadcast_row[1] > recommend_row[2]* (1+10/100)):
+    notify = False
+    # 10% increase finder
+    filtered_df = recommend_pd[recommend_pd['nsecode'] == nsecode]
+    non_na_rows = filtered_df[filtered_df['returns'].astype(str).str.lower() != 'no']
+    is10increased = non_na_rows.sort_values(by='date', ascending=False).head(1)
+    if is10increased.empty:
+        is10increased = recommend_row
+    else:
+        is10increased = is10increased.values.tolist()[0]
+    if(broadcast_row[1] > is10increased[2]*(1+10/100)):
+        percentage = ((broadcast_row[1]-recommend_row[2])/recommend_row[2])*100
+        returns = f"{percentage:.2f}%"
         print(recommend_row)
-        message = f"🚀 Our recommended stock ({recommend_row[1]}) is on 10% increase, from {recommend_row[2]} to {int(broadcast_row[1])}!💹 "
+        notify = True
+        message = f"🚀 Our recommended stock ({recommend_row[1]}) is on {returns} increase, from {recommend_row[2]} to {int(broadcast_row[1])}!💹 "
         print(message)
         sent_message = await client.send_message(chat_id, message , reply_to=int(recommend_row[4]))
         message_id = sent_message.id
-        print("message_id:",message_id)
-        await client.pin_message(chat_id, message=message_id, notify=False)
+        print("pinning message")
+        # await client.pin_message(chat_id, message=message_id, notify=False)
         username ='admin'
         password = secrets['admin']
         auth = requests.auth.HTTPBasicAuth(username, password)
+
         url = "http://127.0.0.1:5000/update/price_recommendation"
         data = {
                     "nsecode": recommend_row[1],
                     "price": broadcast_row[1],
-                    "message_id": message_id
+                    "message_id": message_id,
+                    "returns": returns
                 }
         response = requests.post(url, json=data, auth=auth)
         if response.status_code == 200:
             print(response.text)
+    
+    if not notify:
+        if(broadcast_row[1] > recommend_row[2]* (1+3/100)):
+            username ='admin'
+            password = secrets['admin']
+            auth = requests.auth.HTTPBasicAuth(username, password)
+
+            url = "http://127.0.0.1:5000/update/price_recommendation"
+            data = {
+                        "nsecode": recommend_row[1],
+                        "price": broadcast_row[1],
+                        "message_id": "empty",
+                        "returns": "no"
+                    }
+            response = requests.post(url, json=data, auth=auth)
+            if response.status_code == 200:
+                print(response.text)
 
 async def main():
     await client.connect()
     cached_stocks=list(set(read_cached(cached_file)))
-    saved_recommendation_list = [["post_id", "nsecode", "price", "date","message_id"]]
+    saved_recommendation_list = [["post_id", "nsecode", "price", "date","message_id","returns"]]
     saved_recommendation_file = read_cached(recommendation_file)
+
     try:
         if(len(saved_recommendation_file) == 0):
             post_id = 0
@@ -111,7 +143,7 @@ async def main():
     cached(cached_file)
     await client.send_message(bot_name, f"Skipped: {skiplist}")
     if(len(saved_recommendation_list) != 1):
-        columns=["post_id,nsecode,price,date,message_id"]
+        columns=["post_id,nsecode,price,date,message_id,returns"]
         saved_recommendation_list =[",".join(str(item) for item in sublist) for sublist in saved_recommendation_list]
         saved_recommendation_df=pd.DataFrame(saved_recommendation_file+saved_recommendation_list[1:], columns=columns)
         
@@ -125,7 +157,6 @@ async def main():
         await scanner(broadcast_pd, nsecode)      
     await client.start()
     await client.disconnect()
-    #await client.run_until_disconnected()
 
 if __name__ == '__main__':
     with client:
