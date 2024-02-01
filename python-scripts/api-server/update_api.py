@@ -10,8 +10,8 @@ auth = HTTPBasicAuth()
 
 json_data = None
 recommendation_data = None
-filename = "/Users/lokendar/git-code/greenstox_automation_project/secret.json"
-users_file = "/Users/lokendar/git-code/greenstox_automation_project/MembershipBot/schedule.json"
+filename = "/home/ubuntu/python-scripts/secret.json"
+users_file = "/home/ubuntu/MembershipBot/schedule.json"
 
 with open(filename, 'r') as f:
     secret = json.load(f)
@@ -25,7 +25,8 @@ def channel_invite_button(user_id, plan):
             channel_link = bot.create_chat_invite_link(group_id, member_limit=1, expire_date=expire_date,)
             keyboard = [[InlineKeyboardButton('Join Channel', url=str(channel_link.invite_link))]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            text = f"🚀 Thank you for choosing our {plan} plan!\n\n⏳ Hurry, the channel link expires in 12 hours!"
+            text = f"✅ Payment Recived!\n🚀 Thank you for choosing our {plan} plan!\n\n⏳ Hurry, the channel link expires in 12 hours!"
+            print(text)
             bot.send_message(user_id, text=text, parse_mode=telegram.ParseMode.MARKDOWN ,reply_markup=reply_markup)
 
 @auth.verify_password
@@ -209,7 +210,8 @@ def unauthorized(error):
 @app.route("/razorpay/webhook", methods=['POST'])
 def razorpay_webhook():
     data = request.json
-    telegram_id = data['payload']['order']['entity']['notes']
+    telegram_id = data['payload']['order']['entity']['notes']['telegram_user_id']
+    print(telegram_id)
     update_channel_access_active(telegram_id)
     return jsonify(data), 200
 

@@ -9,21 +9,22 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # Loading secret file
 secrets = {}
-with open('/Users/lokendar/git-code/greenstox_automation_project/MembershipBot/secret.json', 'r') as file:
+with open('/home/ubuntu/secret.json', 'r') as file:
     secrets = json.load(file)
 
 
 # Set up bot and group IDs
-TOKEN = secrets['token']
-group_id = secrets['group_id']
-OWNER_ID = secrets['owner_id']
-DATA_FILE = '/Users/lokendar/git-code/greenstox_automation_project/MembershipBot/schedule.json' # Path to JSON that stores all data about memberships
-CODES_FILE = 'codes.txt' # Path to TXT that stores all codes to be redeemed
-upi_id = secrets['upi_id']
-upi_qr_code = secrets['upi_qrcode_image']
-razorpay_key = secrets['razorpay_key']
-razorpay_sec_key = secrets['razorpay_secret_key']
+TOKEN = secrets['membership_bot']['token']
+group_id = secrets['membership_bot']['group_id']
+OWNER_ID = secrets['membership_bot']['owner_id']
+DATA_FILE = secrets['membership_bot']['data_file']
+CODES_FILE = 'codes.txt' 
+upi_id = secrets['membership_bot']['upi_id']
+upi_qr_code = secrets['membership_bot']['upi_qrcode_image']
+razorpay_key = secrets['membership_bot']['razorpay_key']
+razorpay_sec_key = secrets['membership_bot']['razorpay_secret_key']
 price = 0
+
 
 bot = telegram.Bot(TOKEN)
 updater = Updater(bot=bot, use_context=True)
