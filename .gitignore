@@ -17,6 +17,18 @@ secrets.yaml
 secrets.json
 secret.json
 
+# Ignore .*
+.*
+!.gitignore
+
+#Ignore __pycache__
+__pycache__
+
+#Ignore logs
+logs
+log
+*.log
+
 # Ignore cache files
 stock.cache
 
