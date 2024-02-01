@@ -10,13 +10,13 @@ auth = HTTPBasicAuth()
 
 json_data = None
 recommendation_data = None
-filename = "/home/ubuntu/python-scripts/csv/recommendation.csv"
-users_file = "/home/ubuntu/MembershipBot/schedule.json"
+filename = "/Users/lokendar/git-code/greenstox_automation_project/secret.json"
+users_file = "/Users/lokendar/git-code/greenstox_automation_project/MembershipBot/schedule.json"
 
-with open('/home/ubuntu/python-scripts/secret.json', 'r') as f:
+with open(filename, 'r') as f:
     secret = json.load(f)
-bot_token = secret['membership_bot_token']
-group_id = secret['chat_id']
+bot_token = secret['membership_bot']['token']
+group_id = secret['python_scripts']['chat_id']
 bot = telegram.Bot(bot_token)
 updater = Updater(bot=bot, use_context=True)
 
@@ -80,7 +80,6 @@ def append_messageid(json_data):
                 if row_date == date:
                     is_nsecode_present = True
                     row[4] = message_id
-                    row[5] = returns
                     break
         if not(is_nsecode_present):
             return jsonify({"status":"Data not found"}), 404
@@ -143,8 +142,6 @@ def get_channel_details():
     except Exception as e:
         return jsonify({'error': 'Invalid JSON format'}), 400
 
-@app.route("/channel/update/access/active/<user_id>", methods=['GET'])
-@auth.login_required 
 def update_channel_access_active(user_id):
         try:
             user_id = int(user_id)
@@ -158,8 +155,6 @@ def update_channel_access_active(user_id):
         except:
             return jsonify({'error': 'Invalid user details'}), 400
 
-@app.route("/channel/update/access/hold/<user_id>", methods=['GET'])
-@auth.login_required 
 def update_channel_access_hold(user_id):
         try:
             user_id = int(user_id)
@@ -206,9 +201,17 @@ def get_recommendations():
             return Response(table_html, mimetype='text/html')
         except Exception as e:
             return jsonify({'error': 'get csv failed',"error":str(e)}), 400
+
 @app.errorhandler(401)
 def unauthorized(error):
     return jsonify({'error': 'unauthorized access'}), 401
+
+@app.route("/razorpay/webhook", methods=['POST'])
+def razorpay_webhook():
+    data = request.json
+    telegram_id = data['payload']['order']['entity']['notes']
+    update_channel_access_active(telegram_id)
+    return jsonify(data), 200
 
 @app.route('/health')
 def get_data():
