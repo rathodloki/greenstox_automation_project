@@ -17,6 +17,18 @@ secrets.yaml
 secrets.json
 secret.json
 
+# Ignore .*
+.*
+!.gitignore
+
+#Ignore __pycache__
+__pycache__
+
+#Ignore logs
+logs
+log
+*.log
+
 # Ignore cache files
 stock.cache
 
@@ -50,4 +62,3 @@ package-lock.json  # Added
 # image
 table_image.png
 table10stocks.png
-MembershipBot/schedule.json
