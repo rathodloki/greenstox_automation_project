@@ -57,7 +57,7 @@ dist/  # Added
 worker/  # Added
 node_modules/  # Already included
 package-lock.json  # Added
-
+MembershipBot/schedule.json
 
 # image
 table_image.png
