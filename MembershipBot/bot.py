@@ -1,4 +1,4 @@
-import json, time, re, validate_email_address, telegram, logging
+import json, time, re, validate_email_address, telegram, logging, razorpay
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CallbackQueryHandler, MessageHandler, Filters
 from datetime import datetime, timedelta
@@ -9,18 +9,21 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # Loading secret file
 secrets = {}
-with open('secret.json', 'r') as file:
+with open('/home/ubuntu/secret.json', 'r') as file:
     secrets = json.load(file)
 
 
 # Set up bot and group IDs
-TOKEN = secrets['token']
-group_id = secrets['group_id']
-OWNER_ID = secrets['owner_id']
-DATA_FILE = 'schedule.json' # Path to JSON that stores all data about memberships
-CODES_FILE = 'codes.txt' # Path to TXT that stores all codes to be redeemed
-upi_id = secrets['upi_id']
-upi_qr_code = secrets['upi_qrcode_image']
+TOKEN = secrets['membership_bot']['token']
+group_id = secrets['membership_bot']['group_id']
+OWNER_ID = secrets['membership_bot']['owner_id']
+DATA_FILE = secrets['membership_bot']['data_file']
+CODES_FILE = 'codes.txt' 
+upi_id = secrets['membership_bot']['upi_id']
+upi_qr_code = secrets['membership_bot']['upi_qrcode_image']
+razorpay_key = secrets['membership_bot']['razorpay_key']
+razorpay_sec_key = secrets['membership_bot']['razorpay_secret_key']
+price = 0
 
 
 bot = telegram.Bot(TOKEN)
@@ -49,6 +52,7 @@ def contact(update,contact):
 def handle_contact(update, context):
      global contact_ask
      global contact_details
+     contact_complete = False
      user_id = update.effective_user.id
      if contact_ask['name']:
         if not update.message.text.strip():
@@ -59,7 +63,7 @@ def handle_contact(update, context):
                     names = update.message.text.split()
                     if len(names) >= 2:
                         if re.match("^[A-Za-z -']+$", update.message.text):  
-                            contact_details['name'] = update.message.text
+                            contact_details['Fullname'] = update.message.text
                             contact_ask['name'] = False
                             contact(update, 'email')
                         else:
@@ -90,34 +94,64 @@ def handle_contact(update, context):
         previous_data = read_data()
         data.update(previous_data)
         all_true = all(value for value in contact_ask.values())
-        if not all_true:
-            data[str(user_id)].update({'Fullname':contact_details['name'],
+        if contact_complete:
+            data[str(user_id)].update({'Fullname':contact_details['Fullname'],
             'email':contact_details['email'],'phone':contact_details['phone']})
             write_data(data)
             plan = data[str(user_id)]['plan']
-            message = (f"Please scan the QR code or use UPI id and complete your payment for {plan} access.⚡️")
-            send_qr_code(update, context, message)
+            message = (f"Please complete your payment using below link for {plan} access.⚡️")
+            send_razorpay_link(update, context, message, contact_details, price, plan)
         
-def send_qr_code(update, context, message):
+def send_razorpay_link(update, context, message, contact_details, price, plan):
     user_id = update.effective_user.id
-    with open(upi_qr_code, 'rb') as image_file:
-        bot.send_photo(chat_id=user_id, photo=image_file, caption=f"UPI ID: {upi_id}")
-        bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
-        bot.send_message(chat_id=user_id, text=f"We will review your payment and provide access to our channel!\nStay tuned for the update! 🌟", parse_mode="HTML")
+    client = razorpay.Client(auth=('rzp_test_Tean1eRy8ZAexf', 'iMiQvLGi0sOyJlugeL5TIbUK'))
+    order_data = client.order.create({
+        "amount": price,  
+        "currency": "INR",
+        "receipt": "order_rcptid_11",
+        "notes": {
+            "purpose": "To make unique reference for payment link"
+        }
+    })
+    order_id = order_data['id']
+    payment_link = client.payment_link.create({
+    #   "upi_link": True,
+    "amount": price,
+    "reference_id": order_id,
+    "currency": "INR",
+    "description": f"{plan} plan",
+    "customer": {
+        "name": contact_details['Fullname'],
+        "email": contact_details['email'],
+        "contact": contact_details['phone'],
+    },
+    "notes": {
+        "telegram_user_id": user_id
+    },
+    "notify": {
+        "sms": True,
+        "email": True
+    },
+    })
+    
+    bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
+    bot.send_message(chat_id=user_id, text=payment_link['short_url'], parse_mode="HTML")
      
 def button_click_handler(update, context):
     query = update.callback_query
     option = query.data 
     user_id = update.effective_user.id
 
-    
+    global price
     if option == "1 Day":
+        price = 7*100
         logging.info(f"User {user_id}: choosed Plan: {option}")
         subscription_plan(option, update, context)
     elif option == "7 Days":
         logging.info(f"User {user_id}: choosed Plan: {option}")
         subscription_plan(option, update, context)
     elif option == "1 Month":
+        price = 199*100
         logging.info(f"User {user_id}: choosed Plan: {option}")
         subscription_plan(option, update, context)
     elif option == "3 Months":
@@ -127,6 +161,7 @@ def button_click_handler(update, context):
         logging.info(f"User {user_id}: choosed Plan: {option}")
         subscription_plan(option, update, context)
     elif option == "1 Year":
+        price = 1999*100
         subscription_plan(option, update, context)
     elif option.split(",")[0] == "cancel":
         days = option.split(",")[2]
@@ -152,12 +187,12 @@ def subscribe(update, context):
             chat_info = bot.get_chat(chat_id=user_id)
             username = chat_info.username
             keyboard = [
-                        [InlineKeyboardButton("1 Day", callback_data="1 Day"), InlineKeyboardButton("7 Days", callback_data="7 Days"), InlineKeyboardButton("1 Month", callback_data="1 Month")],
-                        [InlineKeyboardButton("3 Months", callback_data="3 Months"), InlineKeyboardButton("6 Months", callback_data="6 Months"), InlineKeyboardButton("1 Year", callback_data="1 Year")]
+                        [InlineKeyboardButton("1 Day at ₹7", callback_data="1 Day")],
+                        [InlineKeyboardButton("1 Month at ₹199", callback_data="1 Month")],
+                        [InlineKeyboardButton("1 Year at ₹1999", callback_data="1 Year")]
                     ]
             reply_markup = InlineKeyboardMarkup(keyboard, one_time_keyboard=True)
             bot.send_message(chat_id=user_id, text="Choose a Plan:", reply_markup=reply_markup)
-
                  
 
 # Reads data from JSON
@@ -198,9 +233,16 @@ def new_plan(days, date, update, context):
      user_id = str(update.effective_user.id)
      data = read_data()
      data[str(user_id)].update({'removal_date': date,'plan':days})
+     if days == '1 Day':
+         price = 7*100
+     elif days == '1 Month':
+         price = 199*100
+     elif days == '1 Year':
+         price = 1999*100
      write_data(data)
-     message = (f"Please scan the QR code or use UPI id and complete your payment for access.⚡️")
-     send_qr_code(update, context, message)
+     message = (f"Please complete your payment using below link for {days} access.⚡️")
+     contact_details = data[str(user_id)]
+     send_razorpay_link(update, context, message, contact_details, price, days)
 
 
 def subscription_plan(option, update, context):
@@ -242,21 +284,25 @@ def subscription_plan(option, update, context):
          'removal_date': removal_date.isoformat(),
          'status':'hold', 'plan':option}
     else:
-        if data[str(user_id)]['status'] == 'success':
-            data[str(user_id)].update({'removal_date': removal_date.isoformat()})
+        if data[str(user_id)]['status'] == 'active' and not(data[str(user_id)]['plan'] == option):
+            current_plan_date = data[str(user_id)]['removal_date']
+            current_plan_date = datetime.fromisoformat(current_plan_date)
+            new_plan_date = current_plan_date + timedelta(days=d)
+            removal_date = new_plan_date.isoformat()
+            message = f"You have already active the *{data[str(user_id)]['plan']} Plan*!\nDo you want to add new *{option} Plan* after current plan ended?"
+            keyboard = [[InlineKeyboardButton(f"Choose {option} plan 🗓️", callback_data=f"cancel,{removal_date},{option}")],[InlineKeyboardButton(f"Nope", callback_data=f"new_plan.nope")]]
+            reply_markup = InlineKeyboardMarkup(keyboard, one_time_keyboard=True)
+            bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN,reply_markup=reply_markup)
+            logging.info(f"user response: {message}")  
         elif data[str(user_id)]['plan'] == option:
-             message = f"You have already opted the *{data[str(user_id)]['plan']} Plan*!."
-             
+             message = f"You have already opted for the *{data[str(user_id)]['plan']} Plan*!."
              bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN)
              if data[str(user_id)]['status'] == 'hold':
-                bot.send_message(chat_id=user_id, text='Please wait as we will soon provide access', parse_mode=ParseMode.MARKDOWN)
+                bot.send_message(chat_id=user_id, text='Please wait for the successful payment.', parse_mode=ParseMode.MARKDOWN)
              logging.info(f"user response: {message}")
         else:
-             message = f"You have already opted the *{data[str(user_id)]['plan']} Plan*!\nDo you want to Cancel ❌ and Opt for new *{option} Plan*?"
-             keyboard = [[InlineKeyboardButton(f"Choose {option} plan", callback_data=f"cancel,{removal_date},{option}"), InlineKeyboardButton(f"Nope", callback_data=f"new_plan.nope")]]
-             reply_markup = InlineKeyboardMarkup(keyboard, one_time_keyboard=True)
-             bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN,reply_markup=reply_markup)
-             logging.info(f"user response: {message}")
+            message = f"You have already opted the *{data[str(user_id)]['plan']} Plan*\nPlease wait for the successful payment."
+            bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN)
     write_data(data)
     logging.info("Scheduled task saved to JSON file.")
 

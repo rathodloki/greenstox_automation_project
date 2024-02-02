@@ -10,13 +10,13 @@ auth = HTTPBasicAuth()
 
 json_data = None
 recommendation_data = None
-filename = "/home/ubuntu/python-scripts/csv/recommendation.csv"
+filename = "/home/ubuntu/python-scripts/secret.json"
 users_file = "/home/ubuntu/MembershipBot/schedule.json"
 
-with open('/home/ubuntu/python-scripts/secret.json', 'r') as f:
+with open(filename, 'r') as f:
     secret = json.load(f)
-bot_token = secret['membership_bot_token']
-group_id = secret['chat_id']
+bot_token = secret['membership_bot']['token']
+group_id = secret['python_scripts']['chat_id']
 bot = telegram.Bot(bot_token)
 updater = Updater(bot=bot, use_context=True)
 
@@ -25,7 +25,8 @@ def channel_invite_button(user_id, plan):
             channel_link = bot.create_chat_invite_link(group_id, member_limit=1, expire_date=expire_date,)
             keyboard = [[InlineKeyboardButton('Join Channel', url=str(channel_link.invite_link))]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            text = f"🚀 Thank you for choosing our {plan} plan!\n\n⏳ Hurry, the channel link expires in 12 hours!"
+            text = f"✅ Payment Recived!\n🚀 Thank you for choosing our {plan} plan!\n\n⏳ Hurry, the channel link expires in 12 hours!"
+            print(text)
             bot.send_message(user_id, text=text, parse_mode=telegram.ParseMode.MARKDOWN ,reply_markup=reply_markup)
 
 @auth.verify_password
@@ -80,7 +81,6 @@ def append_messageid(json_data):
                 if row_date == date:
                     is_nsecode_present = True
                     row[4] = message_id
-                    row[5] = returns
                     break
         if not(is_nsecode_present):
             return jsonify({"status":"Data not found"}), 404
@@ -143,8 +143,6 @@ def get_channel_details():
     except Exception as e:
         return jsonify({'error': 'Invalid JSON format'}), 400
 
-@app.route("/channel/update/access/active/<user_id>", methods=['GET'])
-@auth.login_required 
 def update_channel_access_active(user_id):
         try:
             user_id = int(user_id)
@@ -158,8 +156,6 @@ def update_channel_access_active(user_id):
         except:
             return jsonify({'error': 'Invalid user details'}), 400
 
-@app.route("/channel/update/access/hold/<user_id>", methods=['GET'])
-@auth.login_required 
 def update_channel_access_hold(user_id):
         try:
             user_id = int(user_id)
@@ -206,9 +202,18 @@ def get_recommendations():
             return Response(table_html, mimetype='text/html')
         except Exception as e:
             return jsonify({'error': 'get csv failed',"error":str(e)}), 400
+
 @app.errorhandler(401)
 def unauthorized(error):
     return jsonify({'error': 'unauthorized access'}), 401
+
+@app.route("/razorpay/webhook", methods=['POST'])
+def razorpay_webhook():
+    data = request.json
+    telegram_id = data['payload']['order']['entity']['notes']['telegram_user_id']
+    print(telegram_id)
+    update_channel_access_active(telegram_id)
+    return jsonify(data), 200
 
 @app.route('/health')
 def get_data():

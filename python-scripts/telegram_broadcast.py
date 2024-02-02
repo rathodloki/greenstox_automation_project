@@ -4,12 +4,13 @@ import subprocess, json, datetime, csv, requests
 import pandas as pd
 print(f"---------------Started at: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}---------------")
 secrets = {}
-with open('secret.json', 'r') as file:
+with open('/home/ubuntu/secret.json', 'r') as file:
     secrets = json.load(file)
 
-api_id = secrets['api_id']
-api_hash = secrets['api_hash']
-chat_id = secrets['chat_id']
+api_id = secrets['python_scripts']['api_id']
+api_hash = secrets['python_scripts']['api_hash']
+chat_id = secrets['python_scripts']['chat_id']
+
 bot_name = '@chartbot_telegrambot'
 broadcast_csv = '/var/www/html/broadcast.csv'
 cached_file = "stock.cache"
@@ -84,7 +85,7 @@ async def scanner(broadcast_pd, nsecode):
         print("pinning message")
         # await client.pin_message(chat_id, message=message_id, notify=False)
         username ='admin'
-        password = secrets['admin']
+        password = secrets['python_scripts']['admin']
         auth = requests.auth.HTTPBasicAuth(username, password)
 
         url = "http://127.0.0.1:5000/update/price_recommendation"
@@ -101,7 +102,7 @@ async def scanner(broadcast_pd, nsecode):
     if not notify:
         if(broadcast_row[1] > recommend_row[2]* (1+3/100)):
             username ='admin'
-            password = secrets['admin']
+            password = secrets['python_scripts']['admin']
             auth = requests.auth.HTTPBasicAuth(username, password)
 
             url = "http://127.0.0.1:5000/update/price_recommendation"
