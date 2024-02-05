@@ -10,7 +10,7 @@ auth = HTTPBasicAuth()
 
 json_data = None
 recommendation_data = None
-filename = "/home/ubuntu/python-scripts/secret.json"
+filename = "/home/ubuntu/secret.json"
 users_file = "/home/ubuntu/MembershipBot/schedule.json"
 
 with open(filename, 'r') as f:
@@ -25,7 +25,7 @@ def channel_invite_button(user_id, plan):
             channel_link = bot.create_chat_invite_link(group_id, member_limit=1, expire_date=expire_date,)
             keyboard = [[InlineKeyboardButton('Join Channel', url=str(channel_link.invite_link))]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            text = f"✅ Payment Recived!\n🚀 Thank you for choosing our {plan} plan!\n\n⏳ Hurry, the channel link expires in 12 hours!"
+            text = f"✅ Payment Processed!\n\nThank you for joining GreenStox, looking forward to deliver for your amazing trading journey with Us! ⚡\n\n⏳ Kindly join the Channel below within 12 hours! "
             print(text)
             bot.send_message(user_id, text=text, parse_mode=telegram.ParseMode.MARKDOWN ,reply_markup=reply_markup)
 
