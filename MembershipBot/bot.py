@@ -40,10 +40,10 @@ def contact(update,contact):
     global contact_ask
     user_id = update.effective_user.id
     if(contact == "name"):
-        bot.sendMessage(chat_id=user_id, text="To proceed, please provide your name:")
+        bot.sendMessage(chat_id=user_id, text="What's your good name?")
         contact_ask[contact] = True
     elif(contact == "email"):
-        bot.sendMessage(chat_id=user_id, text="kindly enter your email address:")
+        bot.sendMessage(chat_id=user_id, text="Kindly provide us your email so you can keep your account secure with us :")
         contact_ask[contact] = True
     elif(contact == "phone"):
         bot.sendMessage(chat_id=user_id, text="please share your mobile number:")
@@ -82,7 +82,7 @@ def handle_contact(update, context):
                 'email':contact_details['email']})
                 write_data(data)
                 plan = data[str(user_id)]['plan']
-                message = (f"Please complete your payment using below link for {plan} access.⚡️")
+                message = (f"Process the payment using below button to start your awesome journey with GreenStox!")
                 send_razorpay_link(update, context, message, contact_details, price, plan)
         else:
              bot.send_message(user_id, "Invalid email address\n\nPlease re-enter email address again", parse_mode="HTML")
@@ -128,8 +128,12 @@ def send_razorpay_link(update, context, message, contact_details, price, plan):
     })
     
     bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
-    bot.send_message(chat_id=user_id, text=f"<a href='{payment_link['short_url']}'> Pay now </a>", parse_mode="HTML")
-     
+    keyboard = [[InlineKeyboardButton('Pay now', url=str(payment_link['short_url']))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    message = f"{plan}\nPrice: ₹{price/100}"
+    bot.send_message(user_id, message, parse_mode=telegram.ParseMode.MARKDOWN ,reply_markup=reply_markup)
+
+
 def button_click_handler(update, context):
     query = update.callback_query
     option = query.data 
@@ -137,10 +141,10 @@ def button_click_handler(update, context):
 
     global price
     if option == "1 Day":
-        price = 7*100
         logging.info(f"User {user_id}: choosed Plan: {option}")
         subscription_plan(option, update, context)
     elif option == "7 Days":
+        price = 49*100
         logging.info(f"User {user_id}: choosed Plan: {option}")
         subscription_plan(option, update, context)
     elif option == "1 Month":
@@ -162,6 +166,8 @@ def button_click_handler(update, context):
         new_plan(days, date, update, context)
     elif option == "new_plan.nope":
         bot.send_message(chat_id=query.message.chat_id, text="Alright, have a nice day :)")
+    elif option == "subscribe":
+         subscribe(update, context)
     else:
         bot.send_message(chat_id=query.message.chat_id, text="Invalid option selected.")
 
@@ -174,15 +180,22 @@ def help(update, context):
             bot.send_message(chat_id=user_id, 
                  text=f"Help - To view and subscribe our plans, please click /subscribe", 
                  parse_mode="HTML")
+
+def start(update, context):
+            user_id = update.effective_user.id
+            message = "Welcome to the *GreenStox!*\n\nGet highly accurate price volume action based setups on daily basis 🚀\n\nNeed Help in understanding our services in details? Just type /help"
+            keyboard = [[InlineKeyboardButton(f"Subcribe now", callback_data=f"subscribe")]]
+            reply_markup = InlineKeyboardMarkup(keyboard, one_time_keyboard=True)
+            bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN,reply_markup=reply_markup)
             
 def subscribe(update, context):
             user_id = update.effective_user.id
             chat_info = bot.get_chat(chat_id=user_id)
             username = chat_info.username
             keyboard = [
-                        [InlineKeyboardButton("1 Day at ₹7", callback_data="1 Day")],
-                        [InlineKeyboardButton("1 Month at ₹199", callback_data="1 Month")],
-                        [InlineKeyboardButton("1 Year at ₹1999", callback_data="1 Year")]
+                        [InlineKeyboardButton("1 Month Plan at just ₹199", callback_data="1 Month")],
+                        [InlineKeyboardButton("1 Week Trail at just ₹49", callback_data="7 Days")],
+                        [InlineKeyboardButton("1 Year support at just ₹1999", callback_data="1 Year")]
                     ]
             reply_markup = InlineKeyboardMarkup(keyboard, one_time_keyboard=True)
             bot.send_message(chat_id=user_id, text="Choose a Plan:", reply_markup=reply_markup)
@@ -226,8 +239,8 @@ def new_plan(days, date, update, context):
      user_id = str(update.effective_user.id)
      data = read_data()
      data[str(user_id)].update({'removal_date': date,'plan':days})
-     if days == '1 Day':
-         price = 7*100
+     if days == '7 Days':
+         price = 49*100
      elif days == '1 Month':
          price = 199*100
      elif days == '1 Year':
@@ -319,6 +332,7 @@ def main():
     # Register command handlers
     dp.add_handler(telegram.ext.CommandHandler('help', help))
     dp.add_handler(telegram.ext.CommandHandler('subscribe', subscribe))
+    dp.add_handler(telegram.ext.CommandHandler('start', start))
     # dp.add_handler(telegram.ext.CommandHandler('redeem', redeem))
 
     # Load scheduled removal jobs
