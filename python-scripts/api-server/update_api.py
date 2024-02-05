@@ -10,7 +10,7 @@ auth = HTTPBasicAuth()
 
 json_data = None
 recommendation_data = None
-filename = "/home/ubuntu/python-scripts/secret.json"
+filename = "/home/ubuntu/secret.json"
 users_file = "/home/ubuntu/MembershipBot/schedule.json"
 
 with open(filename, 'r') as f:
