@@ -40,7 +40,7 @@ def contact(update,contact):
     global contact_ask
     user_id = update.effective_user.id
     if(contact == "name"):
-        bot.sendMessage(chat_id=user_id, text="To proceed, please provide your full name:")
+        bot.sendMessage(chat_id=user_id, text="To proceed, please provide your name:")
         contact_ask[contact] = True
     elif(contact == "email"):
         bot.sendMessage(chat_id=user_id, text="kindly enter your email address:")
@@ -59,28 +59,31 @@ def handle_contact(update, context):
              bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
         else:
              if 2 <= len(update.message.text) <= 50:
-                  if all(char.isalpha() or char.isspace() or char in ["-", "'"] for char in update.message.text):
                     names = update.message.text.split()
-                    if len(names) >= 2:
-                        if re.match("^[A-Za-z -']+$", update.message.text):  
-                            contact_details['Fullname'] = update.message.text
-                            contact_ask['name'] = False
-                            contact(update, 'email')
-                        else:
-                            bot.send_message(user_id, "Invalid Full name. Full name contains invalid characters.\n\nPlease re-enter Full name again",parse_mode= "HTML")
-                    else:
-                         bot.send_message(user_id, "Invalid Full name. Full name should have at least a first name and a last name.\n\nPlease re-enter Full name again",parse_mode= "HTML")
-                  else:
-                       bot.send_message(user_id, "Invalid characters in the full name.\n\nPlease re-enter Full name again",parse_mode= "HTML")
+                    contact_details['Fullname'] = update.message.text
+                    contact_ask['name'] = False
+                    contact(update, 'email')
              else:  
-                bot.send_message(user_id, "Invalid Full name. Full name must be between 2 and 50 characters.\n\nPlease re-enter Full name again",parse_mode= "HTML")
+                bot.send_message(user_id, "Invalid name. name must be between 2 and 50 characters.\n\nPlease re-enter name again",parse_mode= "HTML")
                             
      elif contact_ask['email']:
         is_valid_email = validate_email_address.validate_email(update.message.text)
         if is_valid_email: 
             contact_details['email'] = update.message.text
             contact_ask['email'] = False
-            contact(update, 'phone')
+            # contact(update, 'phone')
+            contact_ask['phone'] = False
+            contact_complete = True
+            previous_data = read_data()
+            data.update(previous_data)
+            all_true = all(value for value in contact_ask.values())
+            if contact_complete:
+                data[str(user_id)].update({'Fullname':contact_details['Fullname'],
+                'email':contact_details['email']})
+                write_data(data)
+                plan = data[str(user_id)]['plan']
+                message = (f"Please complete your payment using below link for {plan} access.⚡️")
+                send_razorpay_link(update, context, message, contact_details, price, plan)
         else:
              bot.send_message(user_id, "Invalid email address\n\nPlease re-enter email address again", parse_mode="HTML")
      elif contact_ask['phone']:
@@ -91,16 +94,7 @@ def handle_contact(update, context):
             contact_complete = True
         else:
             bot.send_message(user_id, "Invalid mobile number. Please enter a 10-digit number without spaces or special characters.\n\nPlease re-enter Mobile number again", parse_mode="HTML")
-        previous_data = read_data()
-        data.update(previous_data)
-        all_true = all(value for value in contact_ask.values())
-        if contact_complete:
-            data[str(user_id)].update({'Fullname':contact_details['Fullname'],
-            'email':contact_details['email'],'phone':contact_details['phone']})
-            write_data(data)
-            plan = data[str(user_id)]['plan']
-            message = (f"Please complete your payment using below link for {plan} access.⚡️")
-            send_razorpay_link(update, context, message, contact_details, price, plan)
+        
         
 def send_razorpay_link(update, context, message, contact_details, price, plan):
     user_id = update.effective_user.id
@@ -122,8 +116,7 @@ def send_razorpay_link(update, context, message, contact_details, price, plan):
     "description": f"{plan} plan",
     "customer": {
         "name": contact_details['Fullname'],
-        "email": contact_details['email'],
-        "contact": contact_details['phone'],
+        "email": contact_details['email']
     },
     "notes": {
         "telegram_user_id": user_id
@@ -135,7 +128,7 @@ def send_razorpay_link(update, context, message, contact_details, price, plan):
     })
     
     bot.send_message(chat_id=user_id, text=message, parse_mode="HTML")
-    bot.send_message(chat_id=user_id, text=payment_link['short_url'], parse_mode="HTML")
+    bot.send_message(chat_id=user_id, text=f"<a href='{payment_link['short_url']}'> Pay now </a>", parse_mode="HTML")
      
 def button_click_handler(update, context):
     query = update.callback_query
