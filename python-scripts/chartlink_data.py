@@ -23,5 +23,5 @@ def GetDataFromchartink(payload):
     return df
 
 data = GetDataFromchartink(condition)
-data.to_csv("/home/ubuntu/python-scripts/csv/chartink_result.csv")
+data.to_csv("csv/chartink_result.csv")
 print(data)

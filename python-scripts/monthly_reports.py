@@ -1,15 +1,17 @@
 import pandas as pd
-import sys, json
+import sys, json, os
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from telethon import TelegramClient
 
-with open('secret.json', 'r') as file:
+font_path = "fonts"
+secret_file = os.getenv("SECRET_FILE")
+with open(secret_file, 'r') as file:
     secrets = json.load(file)
 
-api_id = secrets['api_id']
-api_hash = secrets['api_hash']
-chat_id = secrets['chat_id']
+api_id = secrets['python_scripts']['api_id']
+api_hash = secrets['python_scripts']['api_hash']
+chat_id = secrets['python_scripts']['chat_id']
 bot_name = '@chartbot_telegrambot'
 df = pd.read_csv("csv/recommendation.csv")
 current_month = datetime.today().month
@@ -49,8 +51,8 @@ def create_dataframe_image(df, image_path=table_image_path):
     cell_width = int(image_width / len(df.columns))
     cell_height = int(1000 / (len(df) + 1))  # Distribute the height evenly
     font_size = min(cell_width, cell_height) // 3  # Adjust font size based on cell size
-    bold_font = ImageFont.truetype("fonts/Arial_Bold.ttf", 45)
-    font = ImageFont.truetype("fonts/Arial.ttf", font_size)
+    bold_font = ImageFont.truetype(f"{font_path}/Arial_Bold.ttf", 45)
+    font = ImageFont.truetype(f"{font_path}/Arial.ttf", font_size)
     image_height = (len(df) + 1) * cell_height
     image = Image.new('RGB', (image_width, image_height), '#000')
     draw = ImageDraw.Draw(image)
@@ -93,7 +95,7 @@ def add_to_template(template_path, data_type):
     else: 
         header_text = str(current_date + " 2nd half Report").upper()
     font_size = 50
-    font = ImageFont.truetype("/Users/lokendar/Library/Fonts/Arial_Bold.ttf", font_size)
+    font = ImageFont.truetype(f"{font_path}/Arial_Bold.ttf", font_size)
     draw.text((140,40), str(header_text), font=font, fill='#F0F2F5')
     result_image_path = 'image/top10stocks.png'
     template.save(result_image_path)

@@ -1,5 +1,10 @@
-import os, time
+import os, time, json
 import subprocess
+
+secrets = {}
+secret_file = os.getenv("SECRET_FILE")
+with open(secret_file, 'r') as file:
+    secrets = json.load(file)
 
 def run_file(file_path):
     subprocess.run(["python", file_path])
@@ -14,8 +19,8 @@ def remove_csv(csv_path):
         print(f"Removed existing CSV file: {csv_path}")
 
 def main():
-    file_paths = ["/home/ubuntu/python-scripts/chartlink_data.py", "/home/ubuntu/python-scripts/filtered_stocks_data.py", "/home/ubuntu/python-scripts/broadcast_data.py"]
-    csv_paths = ["/home/ubuntu/python-scripts/csv/chartink_result.csv", "/home/ubuntu/python-scripts/csv/filtered_stocks.csv", "/var/www/html/broadcast.csv"]
+    file_paths = ["chartlink_data.py", "filtered_stocks_data.py", "broadcast_data.py"]
+    csv_paths = ["csv/chartink_result.csv", "csv/filtered_stocks.csv", "csv/broadcast.csv"]
     # Remove existing CSV files
     for csv_path in csv_paths:
         remove_csv(csv_path)
