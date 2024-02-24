@@ -1,4 +1,4 @@
-import requests, json, logging, datetime
+import requests, json, logging, datetime, os
 import telegram, pandas as pd
 from telegram.ext import Updater
 from telegram.utils.request import Request
@@ -15,12 +15,13 @@ console_handler.setLevel(logging.INFO)
 logging.getLogger().addHandler(console_handler)
 
 secrets = {}
-with open('/home/ubuntu/chart-image-python/secret.json', 'r') as file:
+secret_file = os.getenv("SECRET_FILE")
+with open(secret_file, 'r') as file:
     secrets = json.load(file)
 
-bot_token = secrets['bot_token']
-group_id = secrets['group_id']
-owner_id = secrets['owner_id']
+bot_token = secrets['chart_image_bot']['bot_token']
+group_id = secrets['chart_image_bot']['group_id']
+owner_id = secrets['chart_image_bot']['owner_id']
 allowed_accounts = {635834411, 6040970776}
 request = Request(con_pool_size=8)
 bot = telegram.Bot(bot_token, request=request)
@@ -28,19 +29,20 @@ updater = Updater(bot=bot, use_context=True)
 
 def caption(nsecode):
     try:
-        broadcast_csv = "/var/www/html/broadcast.csv"
+        broadcast_csv = secrets['python_scripts']['csv_dir']+"/broadcast.csv"
         broadcast_pd = pd.read_csv(broadcast_csv)
         stock_details = broadcast_pd[broadcast_pd["nsecode"]== nsecode.split(":")[1]]
         if not stock_details.empty:
             stock_details = list(stock_details.iloc[0])
             message = f"📈 Stock name: {stock_details[1]} ({stock_details[0]})\n\n" \
             f"️️🎚️ Volume: {stock_details[3]}\n\n" \
-            f"💹 Current Price: ₹{stock_details[4]}\n\n" \
+            f"💹 Radar Price: ₹{stock_details[4]}\n\n" \
             f"⭐ Finstar Rating: {stock_details[5]}\n\n" \
             f"️️🎖️ Valuation Rating: {stock_details[6]}"
             json_body = {"nsecode":stock_details[0],
                         "price":stock_details[4],
-                        "date":datetime.datetime.now().isoformat()} 
+                        "date":datetime.datetime.now().isoformat(),
+                        "returns":"N/A"}
             return message, json_body
 
         else:
@@ -54,8 +56,8 @@ def send_chart_api(update, context):
         update.message.reply_text("Access denied. You are not authorized to use this bot.")
         return
     log_updates(update)
-    chart_url = secrets['chart_img_api_url']
-    chart_api_key = secrets['chart_img_api_key']
+    chart_url = secrets['chart_image_bot']['chart_img_api_url']
+    chart_api_key = secrets['chart_image_bot']['chart_img_api_key']
     symbol = None
     interval = None
     user_id = update.effective_user.id
@@ -100,7 +102,7 @@ def send_chart_api(update, context):
         message, json_body = caption(symbol)
         message_data = bot.send_photo(chat_id=group_id, photo=response.content, caption=message)
         username ='admin'
-        password = secrets['admin']
+        password = secrets['python_scripts']['admin']
         auth = requests.auth.HTTPBasicAuth(username, password)
         try:
             message_id = message_data.message_id

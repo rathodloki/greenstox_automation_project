@@ -1,23 +1,23 @@
 from telethon import TelegramClient
-from telethon.tl.functions.messages import SendMediaRequest
-import subprocess, json, datetime, csv, requests
+import subprocess, json, datetime, csv, requests, os
 import pandas as pd
 print(f"---------------Started at: {datetime.datetime.now().strftime('%d-%m-%Y %I:%M %p')}---------------")
 secrets = {}
-with open('/home/ubuntu/secret.json', 'r') as file:
+secret_file = os.getenv("SECRET_FILE")
+with open(secret_file, 'r') as file:
     secrets = json.load(file)
 
 api_id = secrets['python_scripts']['api_id']
 api_hash = secrets['python_scripts']['api_hash']
 chat_id = secrets['python_scripts']['chat_id']
 
-bot_name = '@chartbot_telegrambot'
-broadcast_csv = '/var/www/html/broadcast.csv'
+bot_name = secrets['python_scripts']['chart_bot_name']
+broadcast_csv = "csv/broadcast.csv"
 cached_file = "stock.cache"
-recommendation_file = "/home/ubuntu/python-scripts/csv/recommendation.csv"
+recommendation_file = "csv/recommendation.csv"
 
 #running analyzing
-subprocess.run(["python", "/home/ubuntu/python-scripts/analyzer.py"])
+subprocess.run(["python", "analyzer.py"])
 broadcast_pd = pd.read_csv(broadcast_csv)
 nsecodelist = broadcast_pd["nsecode"].tolist()
 #telegram message listener
@@ -55,7 +55,7 @@ def saved_recommendation(post_id,nsecode,saved_recommendation_list):
     return saved_recommendation_list
 
 async def scanner(broadcast_pd, nsecode):
-    csv_filename = "csv/recommendation.csv"
+    csv_filename = recommendation_file
     recommend_pd = pd.read_csv(csv_filename) 
     filtered_recommend_pd = recommend_pd[recommend_pd['nsecode'] == nsecode].sort_values(by='date').head(1)
     filtered_broadcast_pd = broadcast_pd[broadcast_pd['nsecode'] == nsecode]
@@ -149,9 +149,9 @@ async def main():
         saved_recommendation_df=pd.DataFrame(saved_recommendation_file+saved_recommendation_list[1:], columns=columns)
         
         if len(saved_recommendation_file) == 0 or saved_recommendation_file[0] != columns[0]:
-            saved_recommendation_df.to_csv('./csv/recommendation.csv',header=columns, index=False, quoting=csv.QUOTE_NONE,sep=';')
+            saved_recommendation_df.to_csv('csv/recommendation.csv',header=columns, index=False, quoting=csv.QUOTE_NONE,sep=';')
         else: 
-            saved_recommendation_df.to_csv('./csv/recommendation.csv',header=None, index=False, quoting=csv.QUOTE_NONE,sep=';')
+            saved_recommendation_df.to_csv('csv/recommendation.csv',header=None, index=False, quoting=csv.QUOTE_NONE,sep=';')
     # Optionally keep the client running for further events
     for nsecode in nsecodelist:
         nsecode = nsecode.replace("-", "_")  

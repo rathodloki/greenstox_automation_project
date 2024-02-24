@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, Response
 from flask_httpauth import HTTPBasicAuth
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater
-import csv, json, telegram
+import csv, json, telegram, os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -10,16 +10,17 @@ auth = HTTPBasicAuth()
 
 json_data = None
 recommendation_data = None
-filename = "/home/ubuntu/secret.json"
-users_file = "/home/ubuntu/MembershipBot/schedule.json"
+secret_file = os.getenv("SECRET_FILE")
 
-with open(filename, 'r') as f:
-    secret = json.load(f)
+with open(secret_file, 'r') as file:
+    secret = json.load(file)
+
+users_file = secret['home_dir']+"/MembershipBot/schedule.json"
 bot_token = secret['membership_bot']['token']
 group_id = secret['python_scripts']['chat_id']
+recommendation_csv = secret['python_scripts']['csv_dir']+"/recommendation.csv"
 bot = telegram.Bot(bot_token)
 updater = Updater(bot=bot, use_context=True)
-
 def channel_invite_button(user_id, plan):
             expire_date=datetime.now() + timedelta(hours=12)
             channel_link = bot.create_chat_invite_link(group_id, member_limit=1, expire_date=expire_date,)
@@ -31,17 +32,17 @@ def channel_invite_button(user_id, plan):
 
 @auth.verify_password
 def verify_password(username, password):
-    if username in secret and secret[username] == password:
+    if username in secret['python_scripts'] and secret['python_scripts'][username] == password:
         return username
     return None
 
-def json_file_reader(filename):
+def json_file_reader(secret_file):
     try:
-        with open(filename, 'r') as jsonfile:
+        with open(secret_file, 'r') as jsonfile:
             data = json.load(jsonfile)
             return data
     except Exception as e:
-        print(f"File problem in {filename}", e)
+        print(f"File problem in {secret_file}", e)
 
 def csv_file_reader(users_file):
     try:
@@ -56,14 +57,15 @@ def write_data(data, users_file):
     with open(users_file, 'w') as f:
         json.dump(data, f)
 
-def read_recommendation_file(filename):
+def read_recommendation_file(recommendation_csv):
     try:
-        with open(filename, 'r') as csvfile:
+        print(recommendation_csv)
+        with open(recommendation_csv, 'r') as csvfile:
             reader = csv.reader(csvfile)
             recommendation_data = list(reader)
             return recommendation_data
     except Exception as e:
-        print(f"File problem in {filename}", e)
+        print(f"File problem in {recommendation_csv}", e)
 
 def append_messageid(json_data):
     try:
@@ -73,10 +75,13 @@ def append_messageid(json_data):
         date = datetime.strptime(date, "%Y-%m-%d")
         date = date.strftime("%d/%b/%Y")
         message_id = json_data['message_id']
-        recommendation_data = read_recommendation_file(filename)
+        recommendation_data = read_recommendation_file(recommendation_csv)
         is_nsecode_present = False
+        
         for row in recommendation_data:
             if row[1] == nsecode:
+                print(row[1])
+                print("assa")
                 row_date = datetime.strptime(row[3].split(" ")[0], "%Y-%m-%d").strftime("%d/%b/%Y")
                 if row_date == date:
                     is_nsecode_present = True
@@ -84,7 +89,7 @@ def append_messageid(json_data):
                     break
         if not(is_nsecode_present):
             return jsonify({"status":"Data not found"}), 404
-        with open(filename, 'w', newline='') as csvfile:
+        with open(secret_file, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(recommendation_data)
             return jsonify({"success":"ok"})
@@ -98,12 +103,12 @@ def append_list(json_data):
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
         message_id = json_data['message_id']
         returns = json_data['returns']
-        recommendation_data = read_recommendation_file(filename)
+        recommendation_data = read_recommendation_file(secret_file)
         if(len(recommendation_data) == 0):
             return jsonify({"status":"Data not found"}), 404
         post_id = int(recommendation_data[len(recommendation_data)-1][0]) + 1
         recommendation_data.append([post_id,nsecode,price,date,message_id,returns ])
-        with open(filename, 'w', newline='') as csvfile:
+        with open(secret_file, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(recommendation_data)
             return jsonify({"success":"ok"})
@@ -172,7 +177,7 @@ def update_channel_access_hold(user_id):
 @auth.login_required
 def get_recommendations():
         try:
-            users_file = "/home/ubuntu/python-scripts/csv/recommendation.csv"
+            users_file = "../csv/recommendation.csv"
             user_data = csv_file_reader(users_file)
             css_styles = """
                         table {

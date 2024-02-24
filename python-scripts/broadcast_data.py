@@ -1,9 +1,15 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import json, os
+secrets = {}
+secret_file = os.getenv("SECRET_FILE")
+with open(secret_file, 'r') as file:
+    secrets = json.load(file)
+broadcast_csv = "csv/broadcast.csv"
 
 # Read the filtered_stocks.csv file
-csv_file_path = '/home/ubuntu/python-scripts/csv/filtered_stocks.csv'
+csv_file_path = 'csv/filtered_stocks.csv'
 portfolio_df = pd.read_csv(csv_file_path)
 
 # Extract necessary columns from the original CSV
@@ -63,5 +69,5 @@ final_data = pd.DataFrame({
 print(final_data)
 
 # Saving the data to broadcast.csv
-final_data.to_csv('/var/www/html/broadcast.csv', index=False)
+final_data.to_csv(broadcast_csv, index=False)
 

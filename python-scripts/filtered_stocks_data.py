@@ -62,7 +62,7 @@ def fundamentals(symbols, key=None):
         return None
 
 # Read stock symbols from 'chartink_results.csv'
-csv_file_path = '/home/ubuntu/python-scripts/csv/chartink_result.csv'  # Replace with the actual file path
+csv_file_path = 'csv/chartink_result.csv'  # Replace with the actual file path
 portfolio_df = pd.read_csv(csv_file_path)
 #portfolio = portfolio_df['nsecode'].tolist()
 portfolio = [nsecode.replace("-", "_") for nsecode in portfolio_df['nsecode'].tolist()]
@@ -118,5 +118,5 @@ for stock_symbol in portfolio:
                 print(f"Stock: {stock_symbol} skipped. Negative Operating Profit found in last 5 quarters.")
 
 # Save filtered stock information to a new CSV file
-filtered_stocks.to_csv('/home/ubuntu/python-scripts/csv/filtered_stocks.csv', index=False)
+filtered_stocks.to_csv('csv/filtered_stocks.csv', index=False)
 

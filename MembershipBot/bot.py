@@ -1,4 +1,4 @@
-import json, time, re, validate_email_address, telegram, logging, razorpay
+import json, time, re, validate_email_address, telegram, logging, razorpay, os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CallbackQueryHandler, MessageHandler, Filters
 from datetime import datetime, timedelta
@@ -9,7 +9,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # Loading secret file
 secrets = {}
-with open('/home/ubuntu/secret.json', 'r') as file:
+secret_file = os.getenv("SECRET_FILE")
+with open(secret_file, 'r') as file:
     secrets = json.load(file)
 
 
