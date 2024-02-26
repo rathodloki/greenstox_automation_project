@@ -89,7 +89,7 @@ def append_messageid(json_data):
                     break
         if not(is_nsecode_present):
             return jsonify({"status":"Data not found"}), 404
-        with open(secret_file, 'w', newline='') as csvfile:
+        with open(recommendation_csv, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(recommendation_data)
             return jsonify({"success":"ok"})
