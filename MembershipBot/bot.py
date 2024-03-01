@@ -221,6 +221,7 @@ def remove_user(context):
     user_id = context['user_id']
     try:
         bot.kick_chat_member(chat_id=group_id, user_id=user_id) # Change bot.ban_chat_member to bot.kick.chat_member in case you want to KICK instead of BAN
+        bot.unban_chat_member(chat_id=group_id, user_id=user_id)
         logging.info(f"User {user_id} removed from group {group_id}")
         bot.send_message(chat_id=OWNER_ID, 
                  text=f"❌ <b>REMOVED</b>: <a href='tg://user?id={user_id}'>{user_id}</a> from group.", 
